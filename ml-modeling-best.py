@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 import numpy as np
 import os
@@ -7,21 +5,21 @@ import os
 from joblib import dump, load
 
 model_to_save = gs.best_estimator_
-dump(model_to_save, 'titanic_pipe.pkl')
+dump(model_to_save, "titanic_pipe.pkl")
 
-os.chdir(r'C:\Users\Takis\Google Drive\_projects_\_python_examples_')
+os.chdir(r"C:\Users\Takis\Google Drive\_projects_\_python_examples_")
 os.getcwd()
 
-df = pd.read_csv('http://bit.ly/kaggletrain')
+df = pd.read_csv("http://bit.ly/kaggletrain")
 df.shape
 df.dtypes
 df.isnull().sum()
-df.to_csv('titanic.csv')
+df.to_csv("titanic.csv")
 
-features = ['Age', 'Fare', 'Embarked', 'Sex', 'Pclass']
+features = ["Age", "Fare", "Embarked", "Sex", "Pclass"]
 
 X = df[features]
-y = df['Survived']
+y = df["Survived"]
 
 y.value_counts()
 y.value_counts(normalize=True)
@@ -32,13 +30,15 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 from sklearn.pipeline import make_pipeline, Pipeline
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2 ,random_state = 1990)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=1990
+)
 [x.shape for x in [X_train, X_test, y_train, y_test]]
 
 y_test.value_counts()
 
-numeric_features = ['Age', 'Fare']
-categorical_features = ['Embarked', 'Sex', 'Pclass']
+numeric_features = ["Age", "Fare"]
+categorical_features = ["Embarked", "Sex", "Pclass"]
 
 # ==============================================
 # PREPROCESSING
@@ -73,19 +73,23 @@ categorical_features = ['Embarked', 'Sex', 'Pclass']
 # PATH 2 : Pipeline , ColumnTransformer
 # ==============================================
 
-numeric_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler())])
+numeric_transformer = Pipeline(
+    steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
+)
 
-categorical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='most_frequent')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+categorical_transformer = Pipeline(
+    steps=[
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("onehot", OneHotEncoder(handle_unknown="ignore")),
+    ]
+)
 
 preprocessor = ColumnTransformer(
     transformers=[
-        ('num', numeric_transformer, numeric_features),
-        ('cat', categorical_transformer, categorical_features)])
-
+        ("num", numeric_transformer, numeric_features),
+        ("cat", categorical_transformer, categorical_features),
+    ]
+)
 
 
 # --------------------------------------------------------------------------------------------
@@ -153,12 +157,24 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 
-from sklearn.model_selection import cross_val_score, cross_validate, GridSearchCV, RandomizedSearchCV, cross_val_predict
+from sklearn.model_selection import (
+    cross_val_score,
+    cross_validate,
+    GridSearchCV,
+    RandomizedSearchCV,
+    cross_val_predict,
+)
 
 from sklearn import metrics
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score, make_scorer, roc_auc_score, plot_roc_curve, f1_score
+from sklearn.metrics import (
+    accuracy_score,
+    make_scorer,
+    roc_auc_score,
+    plot_roc_curve,
+    f1_score,
+)
 
 
 # --------------------------------------------------------------------------------------------
@@ -184,140 +200,6 @@ from sklearn.metrics import accuracy_score, make_scorer, roc_auc_score, plot_roc
 # baseline.best_score_
 
 
-# --------------------------------------------------------------------------------------------
-# Custom Transformer : OneHotEncoder with Drop One functionality
-# Still unclear on how to use a custom transformer with ColumnTransformer ; how to pass arguments into it
-# --------------------------------------------------------------------------------------------
-#
-# import numpy as np
-# from sklearn.base import BaseEstimator, TransformerMixin
-#
-# class ohe_drop1(BaseEstimator, TransformerMixin):
-#
-#     def __init__(self, drop_one = True, drop_initial=True, return_array = True):
-#         self.drop_one = drop_one
-#         self.return_array = return_array
-#         self.drop_initial = drop_initial
-#
-#     def transform(self, X, *_):
-#
-#         Xy = X.copy()
-#
-#         # encode the appropriate levels defined during fit
-#         for v in self.encoding_levels:
-#             Xy[ self.colname + '_' + str(v) ] = np.where(Xy[ self.colname ] == v, 1, 0)
-#
-#         # drop staring column if needed
-#         if self.drop_initial:
-#             result = Xy.drop(self.colname, axis=1)
-#         else :
-#             result = Xy
-#
-#         if self.return_array:
-#             result = result.values
-#
-#         return result
-#
-#     def fit(self, X, colname):
-#
-#         # check input does not contains NaNs
-#         # print(X[colname].isnull().sum())
-#         if X[colname].isnull().sum()!=0 :
-#             raise ValueError('Ensure input does not contain NaN values')
-#
-#         self.colname = colname
-#         self.levels = X[ self.colname ].value_counts().index.tolist()
-#
-#         # track levels to be encoded into binary columns
-#         if self.drop_one:
-#             self.reference_level = self.levels[ :1 ]
-#             self.encoding_levels = self.levels[ 1: ]
-#         else:
-#             self.reference_level = None
-#             self.encoding_levels = self.levels
-#         return self
-#
-#
-# X = df[features]
-# X.isnull().sum()
-# del b
-# oo = ohe_drop1(drop_initial=False,drop_one=False,return_array=False)
-# b = oo.fit_transform( X , colname = 'Sex')
-# b.isnull().sum()
-# X.Sex.value_counts()
-# b['Sex_male'].sum()
-# # oo.fit( X , colname = 'Sex' )
-# # a = oo.transform( X )
-# # a
-#
-# oo.levels
-# oo.reference_level
-# oo.encoding_levels
-#
-#
-# categorical_transformer = Pipeline(steps=[
-#     ('imputer', SimpleImputer(strategy='most_frequent')),
-#     ('encoder', ohe_drop1(drop_initial=False,drop_one=False,return_array=False)) ])
-#
-# preprocessor = ColumnTransformer(
-#     transformers=[
-#         ('num', numeric_transformer, numeric_features),
-#         ('cat', categorical_transformer, categorical_features) ])
-
-# preprocessor = make_column_transformer(
-#             (numeric_transformer, numeric_features),
-#             (ohe_drop1(drop_initial=False,drop_one=False,return_array=False), categorical_features))
-
-# --------------------------------------------------------------------------------------------
-# One Hot Encoder Drop One functionality
-# --------------------------------------------------------------------------------------------
-#
-# categorical_transformer = Pipeline(steps=[
-#     ('imputer', SimpleImputer(strategy='most_frequent')),
-#     ('encoder', OneHotEncoder(drop='first', sparse=True)) ])
-#
-# preprocessor = ColumnTransformer(
-#     transformers=[
-#         ('num', numeric_transformer, numeric_features),
-#         ('cat', categorical_transformer, categorical_features) ])
-#
-# preprocessor.fit_transform(X).shape
-#
-# # dir(preprocessor)
-# # preprocessor.named_transformers_['cat']
-# # dir(preprocessor.named_transformers_['cat'])
-# # preprocessor.named_transformers_['cat'].steps[1][1]
-#
-# dir(preprocessor.named_transformers_['cat'].steps[1][1])
-# preprocessor.named_transformers_['cat'].steps[1][1].get_params()
-# preprocessor.named_transformers_['cat'].steps[1][1].get_feature_names()
-# preprocessor.named_transformers_['cat'].steps[1][1].categories_
-# preprocessor.named_transformers_['cat'].steps[1][1].drop_idx_
-#
-
-# --------------------------------------------------------------------------------------------
-# Category encoder experimentations
-# --------------------------------------------------------------------------------------------
-#
-# import category_encoders as ce
-#
-# ohe = ce.one_hot.OneHotEncoder(drop_invariant=True)
-# dir(ohe)
-# ff = ohe.fit_transform(X['Embarked'])
-# ohe.get_feature_names()
-# type(ff)
-# ff.columns
-#
-#
-# X.columns
-# tt = ohe.fit_transform(X, cols = ['Embarked','Sex'], use_cat_names=True)
-# tt.columns
-# X.dtypes
-#
-# ohe.get_feature_names()
-# X.Pclass.value_counts()
-# X.isnull().sum()
-#
 # # --------------------------------------------------------------------------------------------
 # # ATTACH DIFFERENT ENCODING METHODS TO OUR PIPELINE
 # # Cross Product between Encoders and Different models
@@ -482,29 +364,47 @@ from sklearn.metrics import accuracy_score, make_scorer, roc_auc_score, plot_roc
 # --------------------------------------------------------------------------------------------
 
 # Model Names List
-modelsNames = ['LogisticRegression','RandomForestClassifier','AdaBoost',
-               'KNeighborsClassifier','SVC','LinearDiscriminantAnalysis',
-               'GaussianNB', 'XGBClassifier', 'LGBMClassifier',
-               'CatBoostClassifier']
+modelsNames = [
+    "LogisticRegression",
+    "RandomForestClassifier",
+    "AdaBoost",
+    "KNeighborsClassifier",
+    "SVC",
+    "LinearDiscriminantAnalysis",
+    "GaussianNB",
+    "XGBClassifier",
+    "LGBMClassifier",
+    "CatBoostClassifier",
+]
 # Models List
-modelsList = [LogisticRegression(), RandomForestClassifier(), AdaBoostClassifier(),
-              KNeighborsClassifier(), SVC(), LinearDiscriminantAnalysis(),
-              GaussianNB(), XGBClassifier(), LGBMClassifier(),
-              CatBoostClassifier(verbose=0)]
+modelsList = [
+    LogisticRegression(),
+    RandomForestClassifier(),
+    AdaBoostClassifier(),
+    KNeighborsClassifier(),
+    SVC(),
+    LinearDiscriminantAnalysis(),
+    GaussianNB(),
+    XGBClassifier(),
+    LGBMClassifier(),
+    CatBoostClassifier(verbose=0),
+]
 
 # Models Dictionary
-modelsDict = {x:y for x,y in zip(modelsNames, modelsList)}
+modelsDict = {x: y for x, y in zip(modelsNames, modelsList)}
 
 # Build dictionary of pipelines :: 'ModelName' (key) : Pipeline() (value)
 # pipesDict = {x : make_pipeline(preprocessor, y) for x, y in modelsDict.items()}
 # pipesDict = {x : make_pipeline(preprocessor, y) for x, y in modelsDict.items()}
-pipesDict = { x : Pipeline([('preprocessor', preprocessor),(x,y)]) for x, y in modelsDict.items()}
+pipesDict = {
+    x: Pipeline([("preprocessor", preprocessor), (x, y)]) for x, y in modelsDict.items()
+}
 
 # cross_val_score tracks only one metric
 for name, pipe in pipesDict.items():
-    print(f'training {name}')
-    scores = cross_val_score(pipe, X, y, scoring = 'roc_auc', cv = 10)
-    print(f'Roc-Auc : {scores.mean():.3f} :: (+/-) {2 * scores.std():.3f}')
+    print(f"training {name}")
+    scores = cross_val_score(pipe, X, y, scoring="roc_auc", cv=10)
+    print(f"Roc-Auc : {scores.mean():.3f} :: (+/-) {2 * scores.std():.3f}")
 
 # # cross_validate can track multiple metrics
 # for name, pipe in pipesDict.items():
@@ -515,19 +415,20 @@ for name, pipe in pipesDict.items():
 #     print(50 * '-')
 
 
-
 # --------------------------------------------------------------------------------------------
 # GRIDSEARCHCV
 # --------------------------------------------------------------------------------------------
 
 # Model Names List
-modelsNames = ['LogisticRegression','RandomForestClassifier','SVC']
+modelsNames = ["LogisticRegression", "RandomForestClassifier", "SVC"]
 # Models Dictionary
-modelsList = [ LogisticRegression(), RandomForestClassifier(), SVC()]
+modelsList = [LogisticRegression(), RandomForestClassifier(), SVC()]
 # Models Dictionary
-modelsDict = {x : y for x,y in zip(modelsNames, modelsList)}
+modelsDict = {x: y for x, y in zip(modelsNames, modelsList)}
 # Build dictionary of pipelines :: 'ModelName' (key) : Pipeline() (value)
-pipesDict = {x : Pipeline([('preprocessor',preprocessor),(x,y)]) for x, y in modelsDict.items()}
+pipesDict = {
+    x: Pipeline([("preprocessor", preprocessor), (x, y)]) for x, y in modelsDict.items()
+}
 
 # for k,v in pipesDict.items():
 #     print(what_params(v))
@@ -538,41 +439,48 @@ gridsDict_ = {
     # {
     #     'strategy' : ['stratified','most_frequent','prior','uniform']
     # },
-    'LogisticRegression':
-    {
-        'penalty': [ 'l1', 'l2' ],
-        'C': [6, 8],
-        'solver': [ 'liblinear' ]
+    "LogisticRegression": {
+        "penalty": ["l1", "l2"],
+        "C": [6, 8],
+        "solver": ["liblinear"],
     },
-    'RandomForestClassifier':
-        {
-            'criterion': [ 'gini', 'entropy' ],
-            # 'min_samples_leaf': param_range,
-            # 'max_depth': param_range,
-            # 'min_samples_split': param_range
-        }
-    ,
-    'SVC':
-        {
-            'kernel': [ 'linear', 'rbf' ],
-            'C': [100, 10, 1.0, 0.5, 0.1],
-        }
+    "RandomForestClassifier": {
+        "criterion": ["gini", "entropy"],
+        # 'min_samples_leaf': param_range,
+        # 'max_depth': param_range,
+        # 'min_samples_split': param_range
+    },
+    "SVC": {
+        "kernel": ["linear", "rbf"],
+        "C": [100, 10, 1.0, 0.5, 0.1],
+    },
 }
 
 # Re-Build the dict of grids, by altering the keys in the dicts so as to match the estimator name
-_gridsDict_ = { k : { "__".join([k,kk]) : vv for kk,vv in v.items()} for k,v in gridsDict_.items()}
+_gridsDict_ = {
+    k: {"__".join([k, kk]): vv for kk, vv in v.items()} for k, v in gridsDict_.items()
+}
 
 # Adjust this to get a variety of metrics during CV
-scoring = {'AUC': 'roc_auc', 'Accuracy': make_scorer(accuracy_score), 'Recall' : 'recall'}
+scoring = {
+    "AUC": "roc_auc",
+    "Accuracy": make_scorer(accuracy_score),
+    "Recall": "recall",
+}
 
 # Build a dictionary of GridSearchCV objects
-gridsDict = {name : GridSearchCV(estimator=pipe,
-                                 param_grid=_gridsDict_[name],
-                                 # scoring='accuracy',
-                                 scoring=scoring, refit='AUC', # use refit to return the best estimator according to refit criterion
-                                 cv=10,
-                                 return_train_score=True)
-             for name, pipe in pipesDict.items()}
+gridsDict = {
+    name: GridSearchCV(
+        estimator=pipe,
+        param_grid=_gridsDict_[name],
+        # scoring='accuracy',
+        scoring=scoring,
+        refit="AUC",  # use refit to return the best estimator according to refit criterion
+        cv=10,
+        return_train_score=True,
+    )
+    for name, pipe in pipesDict.items()
+}
 
 # --------------------------------------------------------------------------------------------
 # TRAIN PIPES WITH GRIDS
@@ -580,40 +488,50 @@ gridsDict = {name : GridSearchCV(estimator=pipe,
 
 best_acc = 0.0
 best_clf = 0
-best_gs = ''
+best_gs = ""
 
 for idx, (name, gs) in enumerate(gridsDict.items()):
-    print(75 * '=')
-    print('\nEstimator: %s' % name)
+    print(75 * "=")
+    print("\nEstimator: %s" % name)
     # Fit grid search
     gs.fit(X_train, y_train)
     # Best params
-    print(50 * '-')
-    print('Best params: %s' % gs.best_params_)
+    print(50 * "-")
+    print("Best params: %s" % gs.best_params_)
     # Best training data accuracy
-    print(50 * '-')
-    print('Best score (accoding to what was set as refit parameter) : %.3f' % gs.best_score_)
+    print(50 * "-")
+    print(
+        "Best score (accoding to what was set as refit parameter) : %.3f"
+        % gs.best_score_
+    )
     # Predict on test data with best params
     y_pred = gs.predict(X_test)
     # Test data accuracy of model with best params
     # print('Test set accuracy score for best params: %.3f ' % accuracy_score(y_test, y_pred))
 
     # Print Param report :
-    print(50 * '-')
-    for param, auc, acc, rec in zip(gs.cv_results_['params'], gs.cv_results_['mean_test_AUC'], gs.cv_results_['mean_test_Accuracy'], gs.cv_results_['mean_test_Recall']):
-        print(f'param {param}:: \n>> auc : {auc:.3f}, \n>> accuracy : {acc:.3f}, \n>> recall : {rec:.3f}')
+    print(50 * "-")
+    for param, auc, acc, rec in zip(
+        gs.cv_results_["params"],
+        gs.cv_results_["mean_test_AUC"],
+        gs.cv_results_["mean_test_Accuracy"],
+        gs.cv_results_["mean_test_Recall"],
+    ):
+        print(
+            f"param {param}:: \n>> auc : {auc:.3f}, \n>> accuracy : {acc:.3f}, \n>> recall : {rec:.3f}"
+        )
 
     # Print Best params :
-    print(50 * '-')
-    print(f'Best params : {gs.best_params_}')
+    print(50 * "-")
+    print(f"Best params : {gs.best_params_}")
 
     # Classification Report :
-    print(50 * '-')
-    print(f'Classification Report : \n{classification_report(y_test, y_pred)}')
+    print(50 * "-")
+    print(f"Classification Report : \n{classification_report(y_test, y_pred)}")
 
     # Confusion Matrix :
-    print(50 * '-')
-    print(f'Confusion Matrix : \n{pd.DataFrame(confusion_matrix(y_test, y_pred))}')
+    print(50 * "-")
+    print(f"Confusion Matrix : \n{pd.DataFrame(confusion_matrix(y_test, y_pred))}")
 
     # Track best (highest test accuracy) model
     if roc_auc_score(y_test, y_pred) > best_acc:
@@ -621,7 +539,7 @@ for idx, (name, gs) in enumerate(gridsDict.items()):
         best_gs = gs
         best_clf = name
 
-print('\nClassifier with best test set accuracy: %s' % name)
+print("\nClassifier with best test set accuracy: %s" % name)
 
 # type(gs)
 # dir(gs)
@@ -634,7 +552,6 @@ print('\nClassifier with best test set accuracy: %s' % name)
 # gs.best_estimator_
 # gs.best_score_
 # type(gs.best_estimator_)
-
 
 
 # --------------------------------------------------------------------------------------------
@@ -994,7 +911,6 @@ print('\nClassifier with best test set accuracy: %s' % name)
 # type(gs.best_estimator_)
 
 
-
 # --------------------------------------------------------------------------------------------
 # GRIDSEARCH RESULTS TO DATAFRAME
 # --------------------------------------------------------------------------------------------
@@ -1109,7 +1025,6 @@ print('\nClassifier with best test set accuracy: %s' % name)
 #
 
 
-
 # --------------------------------------------------------------------------------------------
 # CROSS VALIDATE FUNCTIONS
 # --------------------------------------------------------------------------------------------
@@ -1128,14 +1043,14 @@ print('\nClassifier with best test set accuracy: %s' % name)
 # MLFLOW
 # --------------------------------------------------------------------------------------------
 
-'''
+"""
 ______________________________________________________________________________________________
 run while in terminal :
 mlflow ui
 OR
 mlflow server                                     
 ______________________________________________________________________________________________
-'''
+"""
 
 import mlflow
 from datetime import datetime
@@ -1146,11 +1061,11 @@ import shutil
 
 best_acc = 0.0
 best_clf = 0
-best_gs = ''
+best_gs = ""
 
 # xdf = pd.DataFrame(gs.cv_results_, index=json.dumps(gs.cv_results_['params'])).filter(like='mean',axis=1)
-xdf = pd.DataFrame(gs.cv_results_).filter(like='mean',axis=1)
-xdf['params'] = gs.cv_results_['params']
+xdf = pd.DataFrame(gs.cv_results_).filter(like="mean", axis=1)
+xdf["params"] = gs.cv_results_["params"]
 
 # for idx, row in xdf.iterrows():
 #     print(row)
@@ -1162,72 +1077,85 @@ xdf['params'] = gs.cv_results_['params']
 
 mlflow.start_run()
 mlflow.end_run()
-mlflow.delete_run('23b57fb5161745fabd53879a5718dc27')
+mlflow.delete_run("23b57fb5161745fabd53879a5718dc27")
 
 dir(mlflow)
 
-mlflow.set_tracking_uri('file:///C:/Users/Takis/Google%20Drive/_projects_/_python_examples_/mlruns')
+mlflow.set_tracking_uri(
+    "file:///C:/Users/Takis/Google%20Drive/_projects_/_python_examples_/mlruns"
+)
 mlflow.get_artifact_uri()
 mlflow.active_run().info
 mlflow.search_runs()
 
 
-mlflow_artifacts_path = r'C:\Users\Takis\Google Drive\_projects_\_python_examples_\mlflow_artifacts'
+mlflow_artifacts_path = (
+    r"C:\Users\Takis\Google Drive\_projects_\_python_examples_\mlflow_artifacts"
+)
 shutil.rmtree(mlflow_artifacts_path)
 os.makedirs(mlflow_artifacts_path)
 
-mlflow.set_experiment('malakismeno')
-mlflow.get_experiment_by_name('malakismeno')
-mlflow.get_experiment('6')
-mlflow.delete_experiment('4')
+mlflow.set_experiment("malakismeno")
+mlflow.get_experiment_by_name("malakismeno")
+mlflow.get_experiment("6")
+mlflow.delete_experiment("4")
 
 mlflow.active_run().info
 mlflow.get_run(mlflow.active_run().info.run_id).data
 
 for idx, (name, gs) in enumerate(gridsDict.items()):
-
-    timetag = datetime.now().isoformat(timespec='seconds')
+    timetag = datetime.now().isoformat(timespec="seconds")
     modeltag = timetag + "_" + name
     modelfolder = timetag + "_" + name + ".txt"
 
     with mlflow.start_run(nested=True):
-
         gs.fit(X_train, y_train)
-        mlflow.log_metric('best score',gs.best_score_)
+        mlflow.log_metric("best score", gs.best_score_)
         y_pred = gs.predict(X_test)
 
         # Print Param report :
-        for param, auc, acc, rec in zip(gs.cv_results_['params'], gs.cv_results_['mean_test_AUC'], gs.cv_results_['mean_test_Accuracy'], gs.cv_results_['mean_test_Recall']):
-            print(f'param {param}:: \n>> auc : {auc:.3f}, \n>> accuracy : {acc:.3f}, \n>> recall : {rec:.3f}')
+        for param, auc, acc, rec in zip(
+            gs.cv_results_["params"],
+            gs.cv_results_["mean_test_AUC"],
+            gs.cv_results_["mean_test_Accuracy"],
+            gs.cv_results_["mean_test_Recall"],
+        ):
+            print(
+                f"param {param}:: \n>> auc : {auc:.3f}, \n>> accuracy : {acc:.3f}, \n>> recall : {rec:.3f}"
+            )
 
         # Print Best params :
-        print(f'Best params : {gs.best_params_}')
+        print(f"Best params : {gs.best_params_}")
         for k, v in gs.best_params_.items():
-            mlflow.log_param(k,v)
+            mlflow.log_param(k, v)
 
         # GridSearchCV results
         temp_artifact = pd.DataFrame(gs.cv_results_)
-        temp_filename = os.path.join(mlflow_artifacts_path,'gridsearchcv.html')
+        temp_filename = os.path.join(mlflow_artifacts_path, "gridsearchcv.html")
         temp_artifact.to_html(temp_filename)
 
         # Confusion Matrix :
         temp_artifact = pd.DataFrame(confusion_matrix(y_test, y_pred))
-        temp_filename = os.path.join(mlflow_artifacts_path,'confusion_matrix.html')
+        temp_filename = os.path.join(mlflow_artifacts_path, "confusion_matrix.html")
         temp_artifact.to_html(temp_filename)
 
         # Classification Report :
-        temp_artifact = pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose()
-        temp_filename = os.path.join(mlflow_artifacts_path, 'classification_report.html')
+        temp_artifact = pd.DataFrame(
+            classification_report(y_test, y_pred, output_dict=True)
+        ).transpose()
+        temp_filename = os.path.join(
+            mlflow_artifacts_path, "classification_report.html"
+        )
         temp_artifact.to_html(temp_filename)
 
         # ROC Curve
         plot_roc_curve(gs.best_estimator_, X_test, y_test)
-        temp_filename = os.path.join(mlflow_artifacts_path,'roc.png')
+        temp_filename = os.path.join(mlflow_artifacts_path, "roc.png")
         plt.savefig(temp_filename)
 
         # Save model
-        temp_filename = 'model.joblib'
-        temp_filename = temp_filename.replace('-',"_").replace(':',"_")
+        temp_filename = "model.joblib"
+        temp_filename = temp_filename.replace("-", "_").replace(":", "_")
         temp_filename = os.path.join(mlflow_artifacts_path, temp_filename)
         dump(gs.best_estimator_, temp_filename)
 
@@ -1303,12 +1231,14 @@ for idx, (name, gs) in enumerate(gridsDict.items()):
 # HELPER FUNCTION TO CLEAR RUNS
 # --------------------------------------------------------------------------------------------
 
+
 def clear_mlflow_logs():
     mlfdf = mlflow.search_runs()
     for ee in mlfdf.run_id.unique():
         mlflow.delete_run(ee)
-    print('MLFlow metadata was successfully erased')
+    print("MLFlow metadata was successfully erased")
     print(mlflow.search_runs())
+
 
 clear_mlflow_logs()
 
