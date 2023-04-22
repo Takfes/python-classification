@@ -1,3 +1,5 @@
+[![Open In NBViewer](https://img.shields.io/badge/Open%20In-NBViewer-blue)](https://nbviewer.org/github/Takfes/python-classification/blob/master/training.ipynb)
+
 ### EXAMPLES
 
 - visit [training.ipynb](/training.ipynb)
@@ -6,19 +8,16 @@
 
 #### PRIORITY 1
 
-- fix lift plot and random [lift](https://www.listendata.com/2014/08/excel-template-gain-and-lift-charts.html)
-- add visualization of classification thresholds
-- add example of saving the pipeline
-- try to load the pipeline with [pycaret](https://pycaret.readthedocs.io/en/latest/api/regression.html)
-- if successful add examples of ensemble, tune, blend, stack etc
-- also add examples of deployment, api and docker
+- add dummy classifier as a baseline comparison
+- fix lift plot and lift random baseline [lift](https://www.listendata.com/2014/08/excel-template-gain-and-lift-charts.html)
+- add visualization of classification boundaries
+- enable mlflow metrics
 
 #### PRIORITY 2
 
-- enable mlflow metrics
 - enable dvc
-- enable smart experiments with predefined pipelines
 - enable optuna optimization
+- enable smart experiments with predefined pipelines
 
 #### PRIORITY 3
 
