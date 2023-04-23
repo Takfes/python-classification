@@ -140,7 +140,7 @@ def classifier_metrics(y_true, proba, threshold=0.5, tables=False):
     metrics = {}
 
     if tables:
-        metrics["confmat"] = confmat(y_true, y_pred)
+        metrics["confmat"] = classifier_confusion_matrix(y_true, y_pred)
         metrics["clfreport"] = classification_report(y_true, y_pred)
 
     metrics["logloss"] = log_loss(y_true, proba)

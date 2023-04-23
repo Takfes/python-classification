@@ -1,8 +1,7 @@
-[![Open In NBViewer](https://img.shields.io/badge/Open%20In-NBViewer-blue)](https://nbviewer.org/github/Takfes/python-classification/blob/master/training.ipynb)
-
 ### EXAMPLES
 
-- visit [training.ipynb](/training.ipynb)
+- **trainer-sklearn** [![Open In NBViewer](https://img.shields.io/badge/Open%20In-NBViewer-blue)](https://nbviewer.org/github/Takfes/python-classification/blob/master/trainer-sklearn.ipynb)
+- **trainer-pycaret** [![Open In NBViewer](https://img.shields.io/badge/Open%20In-NBViewer-blue)](https://nbviewer.org/github/Takfes/python-classification/blob/master/trainer-pycaret.ipynb)
 
 ### NEXT STEPS
 
