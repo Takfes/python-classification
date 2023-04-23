@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from functools import partial
 from sklearn.experimental import enable_halving_search_cv
 from sklearn.base import clone
 from sklearn.model_selection import (
@@ -29,6 +28,18 @@ from sklearn.metrics import (
     classification_report,
     precision_recall_curve,
     roc_curve,
+)
+import scikitplot as skplt
+import plotly.graph_objects as go
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import roc_curve, precision_recall_curve
+from mlutils.classification import (
+    classifier_metrics,
+    classifier_report,
+    classifier_benchmark,
+    classifier_gain_lift,
+    classifier_gain_lift_plot,
+    classifier_thresholds,
 )
 from xgboost import XGBClassifier
 import category_encoders as ce
@@ -110,7 +121,11 @@ search1.best_score_
 search1.best_params_
 search1.best_index_
 search1.cv_results_
-pd.DataFrame(search1.cv_results_).filter(like="mean_")
+pd.DataFrame(search1.cv_results_).filter(
+    regex="params|mean_|rank_",
+)
+
+estim1 = search1.best_estimator_
 
 model1 = clone(model)
 model1.set_params(**search1.best_params_)
@@ -133,14 +148,6 @@ search2 = HalvingRandomSearchCV(
 )
 
 search2.fit(X_train, y_train)
-
-import scikitplot as skplt
-import plotly.graph_objects as go
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import roc_curve, precision_recall_curve
-from mlutils.classification import classifier_metrics, classifier_report
-
-estim1 = search1.best_estimator_
 estim2 = search2.best_estimator_
 
 train_probs1 = estim1.predict_proba(X_train)
@@ -152,159 +159,41 @@ proba2 = train_probs2[:, 1]
 classifier_metrics(y_train, proba1)
 classifier_metrics(y_train, proba1, threshold=0.9)
 classifier_report(estim1, X_train, X_test, y_train, y_test)
+classifier_benchmark(X_train, X_test, y_train, y_test, "uniform")
+classifier_gain_lift(y_train, estim1.predict_proba(X_train)[:, 1], n_bins=10)
+classifier_gain_lift_plot(y_train, [y_prob], model_names=None, n_bins=10, show=True)
+classifier_thresholds(estim1, X_test, y_test)
 
+y_true = y_train
+y_prob = estim1.predict_proba(X_train)[:, 1]
+n_bins = 10
 
-def classifier_plots(y_true, probas, threshold=0.5):
-    y_pred = np.where(probas[:, 1] >= threshold, 1, 0)
+df = pd.DataFrame({"y_true": y_true, "y_prob": y_prob})
 
-    plots = {}
+df = df.sort_values(by="y_prob", ascending=False)
+df["rank"] = np.arange(len(df)) + 1
+df["bin"] = pd.qcut(df["rank"], n_bins, labels=False) + 1
 
-    plots["confmat"] = skplt.metrics.plot_confusion_matrix(
-        y_train, y_pred, normalize=True
+lift_df = (
+    df.groupby("bin")
+    .agg(
+        positive_count=pd.NamedAgg(column="y_true", aggfunc="sum"),
+        total_count=pd.NamedAgg(column="y_true", aggfunc="count"),
     )
-    plots["roc"] = skplt.metrics.plot_roc(y_true, probas)
-    plots["pr"] = skplt.metrics.plot_precision_recall(y_true, probas)
-    plots["cal"] = skplt.metrics.plot_calibration_curve(y_true, [probas])
-    plots["ks"] = skplt.metrics.plot_ks_statistic(y_true, probas)
-    plots["lift"] = skplt.metrics.plot_lift_curve(y_true, probas)
-    plots["gains"] = skplt.metrics.plot_cumulative_gain(y_true, probas)
-
-    return plots
-
-
-def classifier_plots_int(y_true, probas_list, model_names=None, show=False):
-    if model_names is None:
-        model_names = [f"Model {i+1}" for i in range(len(probas_list))]
-
-    # Create plotly figures
-    roc_fig = go.Figure()
-    pr_fig = go.Figure()
-    cal_fig = go.Figure()
-
-    for proba, model_name in zip(probas_list, model_names):
-        # Calculate metrics
-        fpr, tpr, _ = roc_curve(y_true, proba)
-        precision, recall, _ = precision_recall_curve(y_true, proba)
-        fraction_of_positives, mean_predicted_value = calibration_curve(
-            y_true, proba, n_bins=10
-        )
-
-        # Add traces to figures
-        roc_fig.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=model_name))
-        pr_fig.add_trace(
-            go.Scatter(x=recall, y=precision, mode="lines", name=model_name)
-        )
-        cal_fig.add_trace(
-            go.Scatter(
-                x=mean_predicted_value,
-                y=fraction_of_positives,
-                mode="lines",
-                name=model_name,
-            )
-        )
-
-    # Add diagonal lines
-    roc_fig.add_shape(
-        type="line",
-        x0=0,
-        x1=1,
-        y0=0,
-        y1=1,
-        yref="y",
-        xref="x",
-        line=dict(color="gray", dash="dash"),
-    )
-    cal_fig.add_shape(
-        type="line",
-        x0=0,
-        x1=1,
-        y0=0,
-        y1=1,
-        yref="y",
-        xref="x",
-        line=dict(color="gray", dash="dash"),
-    )
-
-    # Update layout
-    roc_fig.update_layout(title="ROC Curve")
-    pr_fig.update_layout(title="Precision-Recall Curve")
-    cal_fig.update_layout(title="Calibration Curve")
-
-    plots = {"roc": roc_fig, "pr": pr_fig, "cal": cal_fig}
-
-    if show:
-        for k, v in plots.items():
-            v.show()
-
-    return plots
-
-
-plots = classifier_plots_int(y_train, [proba1, proba2], show=True)
-
-
-def classifier_lift_df(y_true, y_prob, n_bins=10):
-    df = pd.DataFrame({"y_true": y_true, "y_prob": y_prob})
-    df = df.sort_values(by="y_prob", ascending=False)
-    df["rank"] = np.arange(len(df)) + 1
-    df["bin"] = pd.qcut(df["rank"], n_bins, labels=False)
-
-    lift_df = (
-        df.groupby("bin")
-        .agg(
-            positive_count=pd.NamedAgg(column="y_true", aggfunc="sum"),
-            total_count=pd.NamedAgg(column="y_true", aggfunc="count"),
-        )
-        .reset_index()
-    )
-
-    lift_df["fraction_of_positives"] = (
-        lift_df["positive_count"] / lift_df["total_count"]
-    )
-    overall_positive_fraction = df["y_true"].sum() / df["y_true"].count()
-    lift_df["lift"] = lift_df["fraction_of_positives"] / overall_positive_fraction
-
-    return lift_df
-
-
-classifier_lift_df(y_train, proba1)
-
-
-def classifier_lift_plot(y_true, probas_list, model_names=None, n_bins=10, show=False):
-    if model_names is None:
-        model_names = [f"Model {i+1}" for i in range(len(probas_list))]
-
-    lift_dfs = {}
-    lift_fig = go.Figure()
-
-    for proba, model_name in zip(probas_list, model_names):
-        lift_df = classifier_lift_df(y_true, proba, n_bins)
-        lift_dfs[model_name] = lift_df
-
-        lift_fig.add_trace(
-            go.Scatter(
-                x=lift_df.index, y=lift_df["lift"], mode="lines", name=model_name
-            )
-        )
-    # add random lift
-    lift_fig.add_shape(
-        type="line",
-        x0=0,
-        x1=n_bins - 1,
-        y0=1,
-        y1=1,
-        yref="y",
-        xref="x",
-        line=dict(color="gray", dash="dash"),
-    )
-
-    lift_fig.update_layout(title="Lift Curve", xaxis_title="Bin", yaxis_title="Lift")
-
-    if show:
-        lift_fig.show()
-
-    return lift_dfs, lift_fig
-
-
-lift_dfs, lift_plot = classifier_lift_plot(
-    y_train, [proba1, proba2], n_bins=12, show=True
+    .reset_index()
 )
+lift_df["positive_count_cumsum"] = lift_df["positive_count"].cumsum()
+lift_df["fraction_of_positives"] = lift_df["positive_count"] / sum(
+    lift_df["positive_count"]
+)
+lift_df["gain"] = lift_df["fraction_of_positives"].cumsum()
+lift_df["cum_gain"] = (lift_df["gain"] * 100) / (10 * lift_df["bin"])
+
+
+from yellowbrick.classifier import discrimination_threshold
+
+visualizer = discrimination_threshold(estim1, X_train, y_train)
+
+[x for x in dir(visualizer) if not x.startswith("_")]
+
+visualizer.show()

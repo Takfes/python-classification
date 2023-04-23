@@ -6,21 +6,14 @@
 
 ### NEXT STEPS
 
-#### PRIORITY 1
-
-- add dummy classifier as a baseline comparison
-- fix lift plot and lift random baseline [lift](https://www.listendata.com/2014/08/excel-template-gain-and-lift-charts.html)
-- add visualization of classification boundaries
-- enable mlflow metrics
-
-#### PRIORITY 2
-
-- enable dvc
-- enable optuna optimization
-- enable smart experiments with predefined pipelines
-
-#### PRIORITY 3
-
-- enable tpot models
-- enable mlem
-- try out bentoml
+- add visualization of classification boundaries [link](https://rasbt.github.io/mlxtend/api_subpackages/mlxtend.plotting/#plot_decision_regions)
+- deploy in free server
+- find a better classification example
+- mlflow tracking
+- tpot, flaml
+- mlxtend
+- dvc
+- mlem
+- bentoml
+- optuna
+- smart experiments with predefined pipelines

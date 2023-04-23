@@ -1,28 +1,108 @@
 import pandas as pd
 import numpy as np
 from sklearn.metrics import (
-    make_scorer,
     accuracy_score,
     precision_score,
     recall_score,
-    f1_score,
     fbeta_score,
     roc_auc_score,
     average_precision_score,
     log_loss,
-    confusion_matrix,
     classification_report,
     precision_recall_curve,
     roc_curve,
+    # make_scorer,
+    # f1_score,
+    # confusion_matrix,
 )
+from sklearn.dummy import DummyClassifier
+from sklearn.calibration import calibration_curve
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 import scikitplot as skplt
 import plotly.graph_objects as go
-from sklearn.calibration import calibration_curve
+import matplotlib.pyplot as plt
+from yellowbrick.classifier import discrimination_threshold
+
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 
 
-def confmat(y_true, y_pred, decimals=3):
+def classifier_param_grid(model):
+    if isinstance(model, Pipeline):
+        model = model.steps[-1][1]
+
+    if isinstance(model, AdaBoostClassifier):
+        param_grid = {
+            "n_estimators": [50, 100, 200, 400],
+            "learning_rate": [0.01, 0.1, 0.5, 1.0],
+        }
+    elif isinstance(model, GradientBoostingClassifier):
+        param_grid = {
+            "n_estimators": [100, 200, 400],
+            "learning_rate": [0.01, 0.1, 0.5, 1.0],
+            "max_depth": [3, 5, 7, 9],
+            "min_samples_split": [2, 5, 10],
+            "min_samples_leaf": [1, 2, 4],
+        }
+    elif isinstance(model, XGBClassifier):
+        param_grid = {
+            "n_estimators": [100, 200, 400],
+            "learning_rate": [0.01, 0.1, 0.5, 1.0],
+            "max_depth": [3, 5, 7, 9],
+            "min_child_weight": [1, 3, 5, 7],
+            "gamma": [0.0, 0.1, 0.2, 0.3],
+            "subsample": [0.5, 0.75, 1.0],
+            "colsample_bytree": [0.5, 0.75, 1.0],
+        }
+    elif isinstance(model, LGBMClassifier):
+        param_grid = {
+            "n_estimators": [100, 200, 400],
+            "learning_rate": [0.01, 0.1, 0.5, 1.0],
+            "num_leaves": [15, 31, 63, 127],
+            "min_child_samples": [5, 10, 20, 30],
+            "subsample": [0.5, 0.75, 1.0],
+            "colsample_bytree": [0.5, 0.75, 1.0],
+        }
+    elif isinstance(model, KNeighborsClassifier):
+        param_grid = {
+            "n_neighbors": list(range(1, 21)),
+            "weights": ["uniform", "distance"],
+            "algorithm": ["auto", "ball_tree", "kd_tree", "brute"],
+            "leaf_size": [10, 30, 50],
+            "p": [1, 2],
+        }
+    elif isinstance(model, LogisticRegression):
+        param_grid = {
+            "penalty": ["l1", "l2", "elasticnet", "none"],
+            "C": np.logspace(-4, 4, 20),
+            "fit_intercept": [True, False],
+            "solver": ["newton-cg", "lbfgs", "liblinear", "sag", "saga"],
+            "max_iter": [100, 200, 500, 1000],
+            "l1_ratio": np.linspace(0, 1, 10),
+        }
+    elif isinstance(model, RandomForestClassifier):
+        param_grid = {
+            "n_estimators": [10, 50, 100, 200, 400],
+            "criterion": ["gini", "entropy"],
+            "max_depth": [None, 10, 20, 30, 40, 50],
+            "min_samples_split": [2, 5, 10],
+            "min_samples_leaf": [1, 2, 4],
+            "max_features": ["auto", "sqrt", "log2", None],
+        }
+    else:
+        raise ValueError("Unsupported model type: {}".format(type(model)))
+    return param_grid
+
+
+def classifier_confusion_matrix(y_true, y_pred, return_all=False, decimals=3):
     cmdata = pd.DataFrame({"y_true": y_true, "y_pred": y_pred})
-    return {
+    results = {
         "norm": round(
             pd.crosstab(
                 cmdata["y_true"], cmdata["y_pred"], margins=True, normalize=True
@@ -48,6 +128,10 @@ def confmat(y_true, y_pred, decimals=3):
             decimals,
         ),
     }
+    if return_all:
+        return results
+    else:
+        return results["index"]
 
 
 def classifier_metrics(y_true, proba, threshold=0.5, tables=False):
@@ -70,6 +154,15 @@ def classifier_metrics(y_true, proba, threshold=0.5, tables=False):
     metrics["accuracy"] = accuracy_score(y_true, y_pred)
 
     return metrics
+
+
+def classifier_benchmark(X_train, X_test, y_train, y_test, strategy="stratified"):
+    clfs = {
+        x: DummyClassifier(strategy=x).fit(X_train, y_train)
+        for x in [strategy]  # "stratified", "uniform", "most_frequent", "prior",
+    }
+
+    return classifier_report(clfs[strategy], X_train, X_test, y_train, y_test)
 
 
 def classifier_report(clf, X_train, X_test, y_train, y_test, threshold=0.5):
@@ -96,6 +189,10 @@ def classifier_report(clf, X_train, X_test, y_train, y_test, threshold=0.5):
             pct_diff=lambda x: x.apply(lambda row: row["diff"] / row["train"], axis=1)
         )
     )
+
+
+def classifier_thresholds(clf, X, y):
+    return discrimination_threshold(clf, X, y)
 
 
 def classifier_plots(y_true, probas, threshold=0.5):
@@ -183,11 +280,11 @@ def classifier_plots_int(y_true, probas_list, model_names=None, show=False):
     return plots
 
 
-def classifier_lift_df(y_true, y_prob, n_bins=10):
+def classifier_gain_lift(y_true, y_prob, n_bins=10):
     df = pd.DataFrame({"y_true": y_true, "y_prob": y_prob})
     df = df.sort_values(by="y_prob", ascending=False)
     df["rank"] = np.arange(len(df)) + 1
-    df["bin"] = pd.qcut(df["rank"], n_bins, labels=False)
+    df["bin"] = pd.qcut(df["rank"], n_bins, labels=False) + 1
 
     lift_df = (
         df.groupby("bin")
@@ -197,25 +294,27 @@ def classifier_lift_df(y_true, y_prob, n_bins=10):
         )
         .reset_index()
     )
-
-    lift_df["fraction_of_positives"] = (
-        lift_df["positive_count"] / lift_df["total_count"]
+    lift_df["positive_count_cumsum"] = lift_df["positive_count"].cumsum()
+    lift_df["fraction_of_positives"] = lift_df["positive_count"] / sum(
+        lift_df["positive_count"]
     )
-    overall_positive_fraction = df["y_true"].sum() / df["y_true"].count()
-    lift_df["lift"] = lift_df["fraction_of_positives"] / overall_positive_fraction
+    lift_df["gain"] = lift_df["fraction_of_positives"].cumsum()
+    lift_df["lift"] = (lift_df["gain"] * 100) / (10 * lift_df["bin"])
 
     return lift_df
 
 
-def classifier_lift_plot(y_true, probas_list, model_names=None, n_bins=10, show=False):
+def classifier_gain_lift_plot(
+    y_true, proba_list, model_names=None, n_bins=10, show=False
+):
     if model_names is None:
-        model_names = [f"Model {i+1}" for i in range(len(probas_list))]
+        model_names = [f"Model {i+1}" for i in range(len(proba_list))]
 
     lift_dfs = {}
     lift_fig = go.Figure()
 
-    for proba, model_name in zip(probas_list, model_names):
-        lift_df = classifier_lift_df(y_true, proba, n_bins)
+    for proba, model_name in zip(proba_list, model_names):
+        lift_df = classifier_gain_lift(y_true, proba, n_bins)
         lift_dfs[model_name] = lift_df
 
         lift_fig.add_trace(
@@ -241,3 +340,35 @@ def classifier_lift_plot(y_true, probas_list, model_names=None, n_bins=10, show=
         lift_fig.show()
 
     return lift_dfs, lift_fig
+
+
+def plot_decision_boundaries(X, y, clf, dim_reduction="pca"):
+    if X.shape > 2:
+        # dimensionality reduction step
+        if dim_reduction == "tsne":
+            reducer = TSNE(n_components=2, random_state=42)
+            Xreduced = reducer.fit_transform(X)
+        elif dim_reduction == "pca":
+            reducer = PCA(n_components=2)
+            Xreduced = reducer.fit_transform(X)
+
+    # Plot the decision boundaries
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Determine the minimum and maximum values for each feature
+    x_min, x_max = Xreduced[:, 0].min() - 0.1, Xreduced[:, 0].max() + 0.1
+    y_min, y_max = Xreduced[:, 1].min() - 0.1, Xreduced[:, 1].max() + 0.1
+
+    # Create a meshgrid of points to plot the decision boundaries
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    # Plot the decision boundaries and the training points
+    ax.contourf(xx, yy, Z, alpha=0.3)
+    ax.scatter(Xreduced[:, 0], Xreduced[:, 1], c=y, cmap=plt.cm.Set1, edgecolor="k")
+    ax.set_xlim(xx.min(), xx.max())
+    ax.set_ylim(yy.min(), yy.max())
+    ax.set_xlabel("Feature 1")
+    ax.set_ylabel("Feature 2")
+    plt.show()

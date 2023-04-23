@@ -1,15 +1,16 @@
 from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
+import pickle
 
 # set the random seed for reproducibility
 SEED = 1990
-np.random.seed(SEED)
-
-# define the number of samples and features
+TEST_RATIO = 1 / 4
 n_samples = 1000
 n_features = 5
 majority_class_weight = 0.7
+np.random.seed(SEED)
 
 
 def main():
@@ -35,10 +36,30 @@ def main():
     df["size"] = sizes
     df["target"] = y
 
-    df.target.value_counts()
+    # split data
+    X = df.drop("target", axis=1)
+    y = df["target"]
 
-    # write the DataFrame to a CSV file
-    df.to_pickle("classification_dataset.pkl")
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=TEST_RATIO, random_state=SEED, stratify=y
+    )
+    # also split dataset to align with pycaret experiment process
+    train = X_train.assign(target=y_train)
+    test = X_test.assign(target=y_test)
+
+    # output data for ml training
+    data = {}
+    data["dataset"] = df
+    data["X_train"] = X_train
+    data["X_test"] = X_test
+    data["y_train"] = y_train
+    data["y_test"] = y_test
+    data["train"] = train
+    data["test"] = test
+
+    # write the DataFrame to disk
+    with open("classification_data.pkl", "wb") as f:
+        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == "__main__":
