@@ -22,7 +22,7 @@ from sklearn.manifold import TSNE
 import scikitplot as skplt
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
-from yellowbrick.classifier import discrimination_threshold
+from yellowbrick.classifier import discrimination_threshold, DiscriminationThreshold
 
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression
@@ -134,6 +134,15 @@ def classifier_confusion_matrix(y_true, y_pred, return_all=False, decimals=3):
         return results["index"]
 
 
+def classifier_benchmark(X_train, X_test, y_train, y_test, strategy="stratified"):
+    clfs = {
+        x: DummyClassifier(strategy=x).fit(X_train, y_train)
+        for x in [strategy]  # "stratified", "uniform", "most_frequent", "prior",
+    }
+
+    return classifier_report(clfs[strategy], X_train, X_test, y_train, y_test)
+
+
 def classifier_metrics(y_true, proba, threshold=0.5, tables=False):
     y_pred = np.where(proba >= threshold, 1, 0)
 
@@ -156,29 +165,20 @@ def classifier_metrics(y_true, proba, threshold=0.5, tables=False):
     return metrics
 
 
-def classifier_benchmark(X_train, X_test, y_train, y_test, strategy="stratified"):
-    clfs = {
-        x: DummyClassifier(strategy=x).fit(X_train, y_train)
-        for x in [strategy]  # "stratified", "uniform", "most_frequent", "prior",
-    }
-
-    return classifier_report(clfs[strategy], X_train, X_test, y_train, y_test)
-
-
 def classifier_report(clf, X_train, X_test, y_train, y_test, threshold=0.5):
     metrics = {}
 
     # train data
     train_probs = clf.predict_proba(X_train)
     y_train_prob = train_probs[:, 1]
-    metrics["train"] = classifier_metrics(
+    metrics["train_metrics"] = classifier_metrics(
         y_train, y_train_prob, threshold=threshold, tables=False
     )
 
     # test data
     test_probs = clf.predict_proba(X_test)
     y_test_prob = test_probs[:, 1]
-    metrics["test"] = classifier_metrics(
+    metrics["test_metrics"] = classifier_metrics(
         y_test, y_test_prob, threshold=threshold, tables=False
     )
 
@@ -192,6 +192,8 @@ def classifier_report(clf, X_train, X_test, y_train, y_test, threshold=0.5):
 
 
 def classifier_thresholds(clf, X, y):
+    # visualizer = DiscriminationThreshold(LogisticRegression())
+    # visualizer.force_model = pipeline.named_steps['classifier']
     return discrimination_threshold(clf, X, y)
 
 
